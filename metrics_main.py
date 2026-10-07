@@ -77,7 +77,7 @@ print("mlp input ->", torch.mean(fraction_variance_explained(mlp_in, block_out))
 print("mlp output ->", torch.mean(fraction_variance_explained(mlp_out, block_out)).item()*100, "%")
 
 
-# Plot the correct logit dependence on a+b and a-b
+# Look at the features at each point of the model and plot them as well as their Fourier transform
 
 a, b, label = (i.to(device) for i in next(iter(val_loader)))
 model(a, b)
@@ -126,57 +126,6 @@ for idx in range(len(a)):
     logits_b[_a, _b] = model.logits[idx].detach()
 
 
-#visualize_2D_matrix(logit_matrix.cpu().numpy(), "Correct logit dependence on sum and difference of inputs")
-
-#visualize_2D_matrix(attn_logit_matrix_a_to_b.cpu().numpy(), "Attention given to token a by token b")
-#visualize_2D_matrix(attn_logit_matrix_a_to_a.cpu().numpy(), "Attention given to token a by token a")
-#visualize_2D_matrix(torch.abs(torch.fft.fft2(attn_logit_matrix_a_to_b)).cpu().numpy(), "Attention given to a by b, 2D transform")
-#visualize_2D_matrix(torch.abs(torch.fft.fft2(attn_logit_matrix_a_to_a)).cpu().numpy(), "Attention given to a by a, 2D transform")
-
-#visualize_2D_matrix(torch.mean(attn_output_from_b_to_a, dim=-1).cpu().numpy(), "Attention output of token a with respect to b")
-#visualize_2D_matrix(torch.mean(attn_output_from_a_to_a, dim=-1).cpu().numpy(), "Attention output of token a with respect to a")
-#visualize_2D_matrix(torch.mean(attn_output_a, dim=-1).cpu().numpy(), "Attention output of token a")
-attn_output_from_b_to_a_2d_fft = torch.fft.fft2(attn_output_from_b_to_a.permute(2, 0, 1))
-#visualize_2D_matrix(torch.mean(torch.abs(attn_output_from_b_to_a_2d_fft), dim=0).cpu().numpy(), "Attention output of token a with respect to b, fourier 2D")
-attn_output_from_a_to_a_2d_fft = torch.fft.fft2(attn_output_from_a_to_a.permute(2, 0, 1))
-#visualize_2D_matrix(torch.mean(torch.abs(attn_output_from_a_to_a_2d_fft), dim=0).cpu().numpy(), "Attention output of token a with respect to a, fourier 2D")
-attn_output_a_2d_fft = torch.fft.fft2(attn_output_a.permute(2, 0, 1))
-#visualize_2D_matrix(torch.mean(torch.abs(attn_output_a_2d_fft), dim=0).cpu().numpy(), "Attention output of token a, fourier 2D")
-
-key_freqs = [0, 15, 19, 28, 30, 38, 56]
-attn_freq = 29
-
-output_freqs = []
-output_freqs.extend([(0, k) for k in key_freqs if (0, k) not in output_freqs])
-output_freqs.extend([(0, module-k) for k in key_freqs if (0, module-k) not in output_freqs])
-output_freqs.extend([(attn_freq, (attn_freq+k) % module) for k in key_freqs if (attn_freq, (attn_freq+k) % module) not in output_freqs])
-output_freqs.extend([(attn_freq, (attn_freq-k) % module) for k in key_freqs if (attn_freq, (attn_freq-k) % module) not in output_freqs])
-output_freqs.extend([(2*attn_freq, k) for k in key_freqs if (2*attn_freq, k) not in output_freqs])
-output_freqs.extend([(2*attn_freq, module-k) for k in key_freqs if (2*attn_freq, module-k) not in output_freqs])
-print(output_freqs)
-
-output_freqs.extend([(k, 0) for k in key_freqs if (k, 0) not in output_freqs])
-output_freqs.extend([(module-k, 0) for k in key_freqs if (module-k, 0) not in output_freqs])
-output_freqs.extend([((attn_freq+k) % module, attn_freq) for k in key_freqs if ((attn_freq+k) % module, attn_freq) not in output_freqs])
-output_freqs.extend([((attn_freq-k) % module, attn_freq) for k in key_freqs if ((attn_freq-k) % module, attn_freq) not in output_freqs])
-output_freqs.extend([((2*attn_freq+k) % module, 0) for k in key_freqs if ((2*attn_freq+k) % module, 0) not in output_freqs])
-output_freqs.extend([((2*attn_freq-k) %module, 0) for k in key_freqs if ((2*attn_freq-k) % module, 0) not in output_freqs])
-print(output_freqs)
-
-def frobenius_rest(tensor, indices):
-    full = torch.linalg.norm(tensor, ord="fro").item()
-
-    valid_indices = [(i,j) for i,j in indices if i != 113 and j != 113]
-    rows, cols = zip(*valid_indices)
-    subset = tensor[rows, cols]
-
-    selected = torch.linalg.norm(subset, ord=2).item()
-
-    print(full, selected)
-    print(math.fabs(full-selected)*100/full, "%")
-
-frobenius_rest(torch.linalg.norm(attn_output_a_2d_fft, dim=0, ord=2), output_freqs)
-
 #visualize_2D_matrix(torch.mean(pos_encoding_out_b, dim=-1).cpu().numpy(), "pre-attention of token b")
 #pos_encoding_out_b_2d_fft = torch.fft.fft2(pos_encoding_out_b.permute(2, 0, 1))
 #visualize_2D_matrix(torch.mean(torch.abs(pos_encoding_out_b_2d_fft), dim=0).cpu().numpy(), "pre-attention of token b, fourier 2D")
@@ -204,5 +153,61 @@ frobenius_rest(torch.linalg.norm(attn_output_a_2d_fft, dim=0, ord=2), output_fre
 #visualize_2D_matrix(torch.mean(logits_b, dim=-1).cpu().numpy(), "logits of token b")
 #logits_b_2d_fft = torch.fft.fft2(logits_b.permute(2, 0, 1))
 #visualize_2D_matrix(torch.mean(torch.abs(logits_b_2d_fft), dim=0).cpu().numpy(), "logits of token b, fourier 2D")
+
+#visualize_2D_matrix(logit_matrix.cpu().numpy(), "Correct logit dependence on sum and difference of inputs")
+
+#visualize_2D_matrix(attn_logit_matrix_a_to_b.cpu().numpy(), "Attention given to token a by token b")
+#visualize_2D_matrix(attn_logit_matrix_a_to_a.cpu().numpy(), "Attention given to token a by token a")
+#visualize_2D_matrix(torch.abs(torch.fft.fft2(attn_logit_matrix_a_to_b)).cpu().numpy(), "Attention given to a by b, 2D transform")
+#visualize_2D_matrix(torch.abs(torch.fft.fft2(attn_logit_matrix_a_to_a)).cpu().numpy(), "Attention given to a by a, 2D transform")
+
+#visualize_2D_matrix(torch.mean(attn_output_from_b_to_a, dim=-1).cpu().numpy(), "Attention output of token a with respect to b")
+#visualize_2D_matrix(torch.mean(attn_output_from_a_to_a, dim=-1).cpu().numpy(), "Attention output of token a with respect to a")
+#visualize_2D_matrix(torch.mean(attn_output_a, dim=-1).cpu().numpy(), "Attention output of token a")
+attn_output_from_b_to_a_2d_fft = torch.fft.fft2(attn_output_from_b_to_a.permute(2, 0, 1))
+#visualize_2D_matrix(torch.mean(torch.abs(attn_output_from_b_to_a_2d_fft), dim=0).cpu().numpy(), "Attention output of token a with respect to b, fourier 2D")
+attn_output_from_a_to_a_2d_fft = torch.fft.fft2(attn_output_from_a_to_a.permute(2, 0, 1))
+#visualize_2D_matrix(torch.mean(torch.abs(attn_output_from_a_to_a_2d_fft), dim=0).cpu().numpy(), "Attention output of token a with respect to a, fourier 2D")
+attn_output_a_2d_fft = torch.fft.fft2(attn_output_a.permute(2, 0, 1))
+#visualize_2D_matrix(torch.mean(torch.abs(attn_output_a_2d_fft), dim=0).cpu().numpy(), "Attention output of token a, fourier 2D")
+
+# Compare the predicted frequencies with the actual frequencies via their Frobenius norm difference
+
+key_freqs = [0, 15, 19, 28, 30, 38, 56]
+attn_freq = 29
+
+output_freqs = []
+
+# Frequencies from scores_a,b * value_b
+output_freqs.extend([(0, k) for k in key_freqs if (0, k) not in output_freqs])
+output_freqs.extend([(0, module-k) for k in key_freqs if (0, module-k) not in output_freqs])
+output_freqs.extend([(attn_freq, (attn_freq+k) % module) for k in key_freqs if (attn_freq, (attn_freq+k) % module) not in output_freqs])
+output_freqs.extend([(attn_freq, (attn_freq-k) % module) for k in key_freqs if (attn_freq, (attn_freq-k) % module) not in output_freqs])
+output_freqs.extend([(2*attn_freq, k) for k in key_freqs if (2*attn_freq, k) not in output_freqs])
+output_freqs.extend([(2*attn_freq, module-k) for k in key_freqs if (2*attn_freq, module-k) not in output_freqs])
+
+# Frequencies from scores_a,a * value_a
+output_freqs.extend([(k, 0) for k in key_freqs if (k, 0) not in output_freqs])
+output_freqs.extend([(module-k, 0) for k in key_freqs if (module-k, 0) not in output_freqs])
+output_freqs.extend([((attn_freq+k) % module, attn_freq) for k in key_freqs if ((attn_freq+k) % module, attn_freq) not in output_freqs])
+output_freqs.extend([((attn_freq-k) % module, attn_freq) for k in key_freqs if ((attn_freq-k) % module, attn_freq) not in output_freqs])
+output_freqs.extend([((2*attn_freq+k) % module, 0) for k in key_freqs if ((2*attn_freq+k) % module, 0) not in output_freqs])
+output_freqs.extend([((2*attn_freq-k) %module, 0) for k in key_freqs if ((2*attn_freq-k) % module, 0) not in output_freqs])
+print(output_freqs)
+
+def frobenius_compare(tensor, indices):
+    full = torch.linalg.norm(tensor, ord="fro").item()
+
+    valid_indices = [(i,j) for i,j in indices if i != 113 and j != 113]
+    rows, cols = zip(*valid_indices)
+    subset = tensor[rows, cols]
+
+    selected = torch.linalg.norm(subset, ord=2).item() # because subset is now a 1D vector after selecting
+
+    print(full, selected)
+    print(math.fabs(full-selected)*100/full, "%")
+
+attn_output_norm_a_2d_fft = torch.linalg.norm(attn_output_a_2d_fft, dim=0, ord=2) # collapse the first dimension which is the feature dimension (D, N, N)
+frobenius_compare(attn_output_norm_a_2d_fft, output_freqs)
 
 plt.show()
