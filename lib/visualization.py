@@ -58,46 +58,6 @@ def plot_learning_acc_and_loss(loss_tr, acc_tr, loss_val, acc_val, norm=None, gr
     plt.tight_layout()  
     plt.show(block=block)
 
-
-def plot_training_runs(results, title='Training and Validation Curves across Runs'):
-    """
-    Plot training runs for the grokking and grokfast experiment.
-    Plots training and validation accuracies for each run
-    """
-    plt.figure(figsize=(12, 7))
-
-    color_list = [key for key in colors.TABLEAU_COLORS.keys()]
-
-    for idx, res in enumerate(results):
-        label = res['label']
-        acc_train = res['acc_train']
-        acc_val = res['acc_val']
-
-        color = color_list[idx % len(color_list)]
-        
-        epochs = range(1, len(acc_train) + 1)
-        
-        acc_train = [acc / 100.0 for acc in acc_train]
-        acc_val = [acc / 100.0 for acc in acc_val]
-            
-        plt.plot(epochs, acc_train, color=color, label=f'Train - label={label:.2f}', linewidth=2)
-        
-        plt.plot(epochs, acc_val, color=color, linestyle='--', label=f'Val - label={label:.2f}', linewidth=1.5)
-
-    plt.xscale('log')
-
-    plt.ylim(0, 1)
-
-    plt.xlabel('Epoch', fontsize=12)
-    plt.ylabel('Accuracy', fontsize=12)
-    plt.title(title, fontsize=14)
-
-    plt.grid(True, which="both", ls="--", alpha=0.5)
-    plt.legend(loc='lower right', fontsize=10)
-
-    plt.tight_layout()
-    plt.show(block=False)
-
 def visualize_2D_matrix(matrix, title):
     # Create a white-to-blue colormap
     cmap = LinearSegmentedColormap.from_list("white_blue", ["white", "blue"])
