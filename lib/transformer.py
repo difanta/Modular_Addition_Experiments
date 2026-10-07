@@ -7,8 +7,7 @@ from torch.nn.functional import softmax
 from torch.nn.parameter import Parameter
 import math
 
-# Constant attention
-
+# function to load the model and fix some weight name issues
 def remap_and_load_state_dict(model, state_dict_path, strict=True, weights_only=False):
     original_state_dict = torch.load(state_dict_path, weights_only=weights_only)
     
