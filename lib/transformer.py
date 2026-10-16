@@ -66,7 +66,7 @@ class MultiHeadSelfAttention(Module):
     def __init__(self, embed_dim, n_heads):
         super().__init__()
         self.embed_dim = embed_dim
-        self.in_proj = Linear(embed_dim, 3*embed_dim) # bias should be False
+        self.in_proj = Linear(embed_dim, 3*embed_dim, bias=False) # bias should be False
         self.out_proj = Linear(embed_dim, embed_dim) # Also here?
         self.n_heads = n_heads
         self.head_dim = embed_dim // n_heads
@@ -136,7 +136,7 @@ class Transformer(Module):
         else:
             x = torch.stack((self.embedding(a), self.embedding(b)), dim=1)
         
-        x = self.pos_encoding_out = self.pos_encoding(x)
+        x = self.pos_encoding_out = x#self.pos_encoding(x)
 
         x = self.blocks_out = self.blocks(x)
 

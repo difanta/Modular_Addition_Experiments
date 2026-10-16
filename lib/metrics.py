@@ -28,5 +28,17 @@ def calc_grad_norm(model: Module, name_exploded_gradients=False):
           grad_norm = p.grad.data.norm(p=2).item() ** 2
           total_norm += grad_norm
           if name_exploded_gradients and grad_norm > 1.0:
-            print(f"{name}: {grad_norm:.6f}")
+            print(f"{name}: {grad_norm ** 0.5:.6f}")
   return total_norm ** 0.5
+
+def compare_frequency_full_vs_subset(freqs, indices):
+    full = torch.linalg.norm(freqs, ord="fro").item()
+
+    rows, cols = zip(*indices)
+    subset = freqs[rows, cols]
+
+    selected = torch.linalg.norm(subset, ord=2).item() # because subset is now a 1D vector after selecting
+
+    print("Norm of the full frequencies vs norm of the selected frequencies:", full, selected)
+    print("Residual norm after removing the selected frequencies:", math.fabs(full-selected)*100/full, "%")
+    print("Minimal value of the selected frequencies:", torch.min(subset).item())

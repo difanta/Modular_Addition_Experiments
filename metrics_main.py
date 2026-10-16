@@ -29,7 +29,7 @@ model = Transformer(d_model=128, n_heads=4, mlp_dim_multiplier=4, vocab_size=mod
 
 PATH = "./data/transformer_clock"
 
-remap_and_load_state_dict(model, PATH+".pt", weights_only=True, strict=True)
+remap_and_load_state_dict(model, PATH+".pt", weights_only=True, strict=False)
 model.eval()
 
 results = None
@@ -46,7 +46,7 @@ model(a, b)
 test(model, CrossEntropyLoss(), val_loader, device)
 
 
-#plot_learning_acc_and_loss(loss_tr=results["loss_train"], acc_tr=results["acc_train"], loss_val=results["loss_val"], acc_val=results["acc_val"], norm=results["norm"], gradient_norm=results["grad_norm"], block=False)
+plot_learning_acc_and_loss(loss_tr=results["loss_train"], acc_tr=results["acc_train"], loss_val=results["loss_val"], acc_val=results["acc_val"], norm=results["norm"], gradient_norm=results["grad_norm"], block=False)
 
 # Test the impact of certain activations on the output
 
@@ -168,46 +168,7 @@ attn_output_from_b_to_a_2d_fft = torch.fft.fft2(attn_output_from_b_to_a.permute(
 #visualize_2D_matrix(torch.mean(torch.abs(attn_output_from_b_to_a_2d_fft), dim=0).cpu().numpy(), "Attention output of token a with respect to b, fourier 2D")
 attn_output_from_a_to_a_2d_fft = torch.fft.fft2(attn_output_from_a_to_a.permute(2, 0, 1))
 #visualize_2D_matrix(torch.mean(torch.abs(attn_output_from_a_to_a_2d_fft), dim=0).cpu().numpy(), "Attention output of token a with respect to a, fourier 2D")
-attn_output_a_2d_fft = torch.fft.fft2(attn_output_a.permute(2, 0, 1))
+attn_output_a_2d_fft = torch.fft.ifft2(attn_output_a.permute(2, 0, 1), norm="ortho")
 #visualize_2D_matrix(torch.mean(torch.abs(attn_output_a_2d_fft), dim=0).cpu().numpy(), "Attention output of token a, fourier 2D")
-
-# Compare the predicted frequencies with the actual frequencies via their Frobenius norm difference
-
-key_freqs = [0, 15, 19, 28, 30, 38, 56]
-attn_freq = 29
-
-output_freqs = []
-
-# Frequencies from scores_a,b * value_b
-output_freqs.extend([(0, k) for k in key_freqs if (0, k) not in output_freqs])
-output_freqs.extend([(0, module-k) for k in key_freqs if (0, module-k) not in output_freqs])
-output_freqs.extend([(attn_freq, (attn_freq+k) % module) for k in key_freqs if (attn_freq, (attn_freq+k) % module) not in output_freqs])
-output_freqs.extend([(attn_freq, (attn_freq-k) % module) for k in key_freqs if (attn_freq, (attn_freq-k) % module) not in output_freqs])
-output_freqs.extend([(2*attn_freq, k) for k in key_freqs if (2*attn_freq, k) not in output_freqs])
-output_freqs.extend([(2*attn_freq, module-k) for k in key_freqs if (2*attn_freq, module-k) not in output_freqs])
-
-# Frequencies from scores_a,a * value_a
-output_freqs.extend([(k, 0) for k in key_freqs if (k, 0) not in output_freqs])
-output_freqs.extend([(module-k, 0) for k in key_freqs if (module-k, 0) not in output_freqs])
-output_freqs.extend([((attn_freq+k) % module, attn_freq) for k in key_freqs if ((attn_freq+k) % module, attn_freq) not in output_freqs])
-output_freqs.extend([((attn_freq-k) % module, attn_freq) for k in key_freqs if ((attn_freq-k) % module, attn_freq) not in output_freqs])
-output_freqs.extend([((2*attn_freq+k) % module, 0) for k in key_freqs if ((2*attn_freq+k) % module, 0) not in output_freqs])
-output_freqs.extend([((2*attn_freq-k) %module, 0) for k in key_freqs if ((2*attn_freq-k) % module, 0) not in output_freqs])
-print(output_freqs)
-
-def frobenius_compare(tensor, indices):
-    full = torch.linalg.norm(tensor, ord="fro").item()
-
-    valid_indices = [(i,j) for i,j in indices if i != 113 and j != 113]
-    rows, cols = zip(*valid_indices)
-    subset = tensor[rows, cols]
-
-    selected = torch.linalg.norm(subset, ord=2).item() # because subset is now a 1D vector after selecting
-
-    print(full, selected)
-    print(math.fabs(full-selected)*100/full, "%")
-
-attn_output_norm_a_2d_fft = torch.linalg.norm(attn_output_a_2d_fft, dim=0, ord=2) # collapse the first dimension which is the feature dimension (D, N, N)
-frobenius_compare(attn_output_norm_a_2d_fft, output_freqs)
 
 plt.show()
