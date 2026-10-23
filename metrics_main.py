@@ -5,13 +5,14 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import numpy as np
 import json
-from lib.train import test
+from lib.train import get_best_accelerator, test
 from lib.visualization import plot_learning_acc_and_loss, visualize_2D_matrix
 from lib.metrics import fraction_variance_explained
 from torch.nn import CrossEntropyLoss
 import math
+from fit_basis_to_activations import find_basis, get_dft_basis
 
-device = torch.device(torch.accelerator.current_accelerator())
+device = get_best_accelerator()
 print(device)
 
 module = 113
@@ -45,8 +46,9 @@ model(a, b)
 
 test(model, CrossEntropyLoss(), val_loader, device)
 
-
-plot_learning_acc_and_loss(loss_tr=results["loss_train"], acc_tr=results["acc_train"], loss_val=results["loss_val"], acc_val=results["acc_val"], norm=results["norm"], gradient_norm=results["grad_norm"], block=False)
+W_E = model.embedding.weight.data.T.to(dtype=torch.complex64)
+print(W_E.shape)
+#plot_learning_acc_and_loss(loss_tr=results["loss_train"], acc_tr=results["acc_train"], loss_val=results["loss_val"], acc_val=results["acc_val"], norm=results["norm"], gradient_norm=results["grad_norm"], block=False)
 
 # Test the impact of certain activations on the output
 
@@ -125,6 +127,16 @@ for idx in range(len(a)):
     mlp_output_b[_a, _b] = model.blocks.get_submodule("0").mlp_out[idx, 1].detach() # type:ignore
     logits_b[_a, _b] = model.logits[idx].detach()
 
+error, basis = find_basis(torch.stack([pos_encoding_out_b, mlp_in_b, mlp_output_b], dim=0).to(device))
+
+print(basis)
+
+W_E = model.embedding.weight.data.to(dtype=torch.complex64)
+visualize_2D_matrix(torch.abs(basis.mH @ W_E).cpu().numpy(), "Embedding Inverse 1D Fourier Magnitudes")
+
+visualize_2D_matrix(torch.abs(basis).cpu().numpy(), "Learned Basis")
+
+visualize_2D_matrix(torch.abs(basis.mH @ get_dft_basis(basis.size(0), device=basis.device, dtype=basis.dtype)).cpu().numpy(), "Basis.H @ DFT matrix") # type: ignore
 
 #visualize_2D_matrix(torch.mean(pos_encoding_out_b, dim=-1).cpu().numpy(), "pre-attention of token b")
 #pos_encoding_out_b_2d_fft = torch.fft.fft2(pos_encoding_out_b.permute(2, 0, 1))
@@ -170,5 +182,54 @@ attn_output_from_a_to_a_2d_fft = torch.fft.fft2(attn_output_from_a_to_a.permute(
 #visualize_2D_matrix(torch.mean(torch.abs(attn_output_from_a_to_a_2d_fft), dim=0).cpu().numpy(), "Attention output of token a with respect to a, fourier 2D")
 attn_output_a_2d_fft = torch.fft.ifft2(attn_output_a.permute(2, 0, 1), norm="ortho")
 #visualize_2D_matrix(torch.mean(torch.abs(attn_output_a_2d_fft), dim=0).cpu().numpy(), "Attention output of token a, fourier 2D")
+
+W_E = model.embedding.weight.data.cpu()
+centered_normalized_W_E = torch.nn.functional.normalize(W_E, p=2, dim=1)
+centered_normalized_W_E = centered_normalized_W_E - centered_normalized_W_E.mean(dim=0, keepdim=True)
+
+U, S, Vh_we = torch.linalg.svd(centered_normalized_W_E, full_matrices=False)
+
+attn_proj = model.blocks.get_submodule("0.mha").in_proj.weight.data.cpu() # type: ignore
+Q,K,V = W_E @ attn_proj[:128], W_E @ attn_proj[128:256], W_E @ attn_proj[256:384] # type: ignore
+centered_normalized_K = torch.nn.functional.normalize(K, p=2, dim=1)
+centered_normalized_K = centered_normalized_K - centered_normalized_K.mean(dim=0, keepdim=True)
+
+U, S, Vh_K = torch.linalg.svd(centered_normalized_K, full_matrices=False)
+
+def scatter_pca(projection, title, is_pair=False):  
+    plt.figure(figsize=(8, 8))  
+    
+    if is_pair:
+        # For the (a, b) activations, there are module * module points
+        x = torch.arange(module)  
+        a_grid, b_grid = torch.meshgrid(x, x, indexing='ij')  
+        labels = (a_grid + b_grid) % module  
+        flat_labels = labels.reshape(-1).numpy()
+        c_label = "(a + b) % module"
+    else:
+        # For the W_E embeddings, there are only 'module' points (0 to 112)
+        flat_labels = torch.arange(module).numpy()
+        c_label = "Individual Number (0 to 112)"
+        
+    plt.scatter(  
+        projection[:, 0].numpy(),  
+        projection[:, 1].numpy(),  
+        c=flat_labels,  
+        cmap='hsv',  
+        s=10  
+    )  
+    plt.colorbar(label=c_label)  
+    plt.title(title)  
+    plt.xlabel("Principal Component 1")  
+    plt.ylabel("Principal Component 2")
+    plt.show(block=False)
+
+#scatter_pca(centered_normalized_W_E @ Vh_we[:2, :].T, "PCA of W_E onto 1,2", False)
+#scatter_pca(centered_normalized_W_E @ Vh_we[2:4, :].T, "PCA of W_E onto 3,4", False)
+#scatter_pca(centered_normalized_W_E @ Vh_we[4:6, :].T, "PCA of W_E onto 4,6", False)
+
+#scatter_pca(centered_normalized_K @ Vh_K[:2, :].T, "PCA of K onto 1,2", False)
+#scatter_pca(centered_normalized_K @ Vh_K[2:4, :].T, "PCA of K onto 3,4", False)
+#scatter_pca(centered_normalized_K @ Vh_K[4:6, :].T, "PCA of K onto 4,6", False)
 
 plt.show()

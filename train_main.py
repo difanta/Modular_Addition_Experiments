@@ -5,10 +5,10 @@ from torch.utils.data import DataLoader
 from torchinfo import summary
 from torch.nn import MSELoss, CrossEntropyLoss
 from torch.optim import AdamW
-from lib.train import train, cross_entropy_high_precision
+from lib.train import get_best_accelerator, train, cross_entropy_high_precision
 import json
 
-device = torch.device(torch.accelerator.current_accelerator())
+device = get_best_accelerator()
 print(device)
 
 module = 113
@@ -24,7 +24,7 @@ test_loader = DataLoader(test_dataset, batch_size=len(test_dataset)+1, shuffle=F
 
 # Model
 
-model = Transformer(d_model=128, n_heads=4, mlp_dim_multiplier=4, vocab_size=module, n_layers=1, constant_attn=False).to(device)
+model = Transformer(d_model=16, n_heads=1, mlp_dim_multiplier=4, vocab_size=module, n_layers=1, constant_attn=False).to(device)
 
 a, b, label = (i.to(device) for i in next(iter(train_loader)))
 summary(model, input_data=(a, b))
@@ -37,7 +37,7 @@ epochs = 30000
 
 loss_train, loss_val, acc_train, acc_val, norm, grad_norm = train(model=model, optimizer=optimizer, criterion=criterion, dataloader_train=train_loader, dataloader_val=val_loader, epochs=epochs, device=device, output_stats_every=1)
 
-PATH = "./data/transformer_clock_1"
+PATH = "./data/transformer_clock_2"
 choice = input(f"wish to save to '{PATH}'? y for yes, default no: ")
 
 if choice.lower() == "y":

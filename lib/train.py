@@ -7,6 +7,13 @@ from torch.utils.data import DataLoader
 from torch.nn.functional import one_hot, log_softmax
 from lib.metrics import calc_l2_norm, calc_grad_norm
 
+def get_best_accelerator():
+  if torch.accelerator.is_available():
+    device = torch.accelerator.current_accelerator()
+  else:
+    device = torch.device("cpu")
+  return device
+
 def train(
     model: Module, 
     optimizer: Optimizer, 

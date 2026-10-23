@@ -1,7 +1,7 @@
 import torch
 from lib.visualization import visualize_2D_matrix
 import matplotlib.pyplot as plt
-device = torch.device(torch.accelerator.current_accelerator())
+device = get_best_accelerator()
 print(device)
 
 module = 113

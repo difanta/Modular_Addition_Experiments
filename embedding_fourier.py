@@ -1,10 +1,17 @@
+from lib.train import get_best_accelerator
 from lib.transformer import Transformer, remap_and_load_state_dict
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
 from lib.visualization import visualize_2D_matrix
+import math
 
-device = torch.device(torch.accelerator.current_accelerator())
+def hoyer_sparsity(matrix):
+    matrix = matrix.reshape(-1)
+    N = matrix.size(0)
+    return (math.sqrt(N) - (torch.linalg.vector_norm(matrix, ord=1)/torch.linalg.vector_norm(matrix, ord=2))) / (math.sqrt(N) - 1)
+
+device = get_best_accelerator()
 
 print(device)
 
@@ -56,22 +63,49 @@ q, k, v = attn_proj[:128], attn_proj[128:256], attn_proj[256:384] # type: ignore
 print(attn_proj.shape)
 
 fourier_1d_E = torch.fft.ifft(W_E, dim=1, norm="ortho") # type: ignore
-fourier_2d_op_E = torch.fft.fft(fourier_1d_E, dim=0, norm="ortho")
+fourier_2d_E = torch.fft.fft(fourier_1d_E, dim=0, norm="ortho")
 visualize_2D_matrix(torch.abs(fourier_1d_E).cpu().numpy(), "Embedding 1D Fourier Magnitudes")
-visualize_2D_matrix(torch.abs(torch.fft.ifft(q @ W_E, dim=1, norm="ortho")).cpu().numpy(), "Embedding x Query 1D Fourier Magnitudes")
-visualize_2D_matrix(torch.abs(torch.fft.ifft(k @ W_E, dim=1, norm="ortho")).cpu().numpy(), "Embedding x Key 1D Fourier Magnitudes")
-visualize_2D_matrix(torch.abs(torch.fft.ifft(v @ W_E, dim=1, norm="ortho")).cpu().numpy(), "Embedding x Value 1D Fourier Magnitudes")
-#visualize_2D_matrix(torch.abs(fourier_2d_op_E).cpu().numpy(), "Embedding 2D Fourier Magnitudes")
+
+fourier_1d_q_E = torch.fft.ifft(q @ W_E, dim=1, norm="ortho")
+fourier_2d_q_E = torch.fft.fft(q @ W_E, dim=0, norm="ortho")
+visualize_2D_matrix(torch.abs(fourier_1d_q_E).cpu().numpy(), "Embedding x Query 1D Fourier Magnitudes")
+#visualize_2D_matrix(torch.abs(fourier_2d_q_E).cpu().numpy(), "Embedding x Query 2D Fourier Magnitudes")
+#visualize_2D_matrix(torch.abs(torch.fft.ifft(k @ W_E, dim=1, norm="ortho")).cpu().numpy(), "Embedding x Key 1D Fourier Magnitudes")
+#visualize_2D_matrix(torch.abs(torch.fft.ifft(v @ W_E, dim=1, norm="ortho")).cpu().numpy(), "Embedding x Value 1D Fourier Magnitudes")
+#visualize_2D_matrix(torch.abs(fourier_2d_E).cpu().numpy(), "Embedding 2D Fourier Magnitudes")
+
+fourier_1d_q = torch.fft.ifft(q, dim=1, norm="ortho")
+fourier_2d_q = torch.fft.fft(fourier_1d_q, dim=0, norm="ortho")
+visualize_2D_matrix(torch.abs(q).cpu().numpy(), "Query 1D Fourier Magnitudes")
+#visualize_2D_matrix(torch.abs(fourier_2d_q).cpu().numpy(), "Query 2D Fourier Magnitudes")
+
+print("p=1: output space sparsity \np=inf: input space sparsity ")
+
+we_overall = torch.linalg.matrix_norm(fourier_1d_E, ord='fro')
+print("W_E overall", hoyer_sparsity(fourier_1d_E))
+print("W_E p=1", torch.linalg.matrix_norm(fourier_1d_E, ord=1) / we_overall)
+print("W_E p=inf", torch.linalg.matrix_norm(fourier_1d_E, ord=float('inf')) / we_overall)
+
+q_we_overall = torch.linalg.matrix_norm(fourier_1d_q_E, ord='fro')
+print("q x W_E overall", hoyer_sparsity(fourier_1d_q_E))
+print("q x W_E p=1", torch.linalg.matrix_norm(fourier_1d_q_E, ord=1) / q_we_overall)
+print("q x W_E p=inf", torch.linalg.matrix_norm(fourier_1d_q_E, ord=float('inf')) / q_we_overall)
+
+q_overall = torch.linalg.matrix_norm(q, ord='fro')
+print("q overall", hoyer_sparsity(q))
+print("q p=1", torch.linalg.matrix_norm(q, ord=1) / q_overall)
+print("q p=inf", torch.linalg.matrix_norm(q, ord=float('inf')) / q_overall)
 
 fourier_1d_U = torch.fft.fft(W_U, dim=0, norm="ortho")
 fourier_2d_op_U = torch.fft.ifft(fourier_1d_U, dim=1, norm="ortho")
-visualize_2D_matrix(torch.abs(fourier_1d_U.T).cpu().numpy(), "Unembedding Fourier 1D Magnitudes")
+#visualize_2D_matrix(torch.abs(fourier_1d_U.T).cpu().numpy(), "Unembedding Fourier 1D Magnitudes")
 #visualize_2D_matrix(torch.abs(fourier_2d_op_U).cpu().numpy(), "Unembedding Fourier 2D Magnitudes")
 
-visualize_2D_matrix(torch.abs(torch.fft.ifft(q @ W_E, dim=1, norm="ortho").T @ torch.fft.ifft(k @ W_E, dim=1, norm="ortho")).cpu().numpy(), "Query.T @ Key")
+#visualize_2D_matrix(torch.abs(torch.fft.ifft(q @ W_E, dim=1, norm="ortho").T @ torch.fft.ifft(k @ W_E, dim=1, norm="ortho")).cpu().numpy(), "Query.T @ Key")
 
 attn_out_proj = model.blocks.get_submodule("0.mha").out_proj.weight.data.detach() @ W_E # type: ignore
 fourier_1d_O = torch.fft.ifft(attn_out_proj, dim=1, norm="ortho")
-visualize_2D_matrix(torch.abs(fourier_1d_O).cpu().numpy(), "Embedding x Out Fourier 1D Magnitudes")
+#visualize_2D_matrix(torch.abs(fourier_1d_O).cpu().numpy(), "Embedding x Out Fourier 1D Magnitudes")
+
 
 plt.show()

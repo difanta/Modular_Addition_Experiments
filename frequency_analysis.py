@@ -5,13 +5,13 @@ from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import numpy as np
 import json
-from lib.train import test
+from lib.train import get_best_accelerator, test
 from lib.visualization import plot_learning_acc_and_loss, visualize_2D_matrix
 from lib.metrics import fraction_variance_explained, compare_frequency_full_vs_subset
 from torch.nn import CrossEntropyLoss
 import math
 
-device = torch.device(torch.accelerator.current_accelerator())
+device = get_best_accelerator()
 print(device)
 
 module = 113
@@ -107,7 +107,7 @@ for i,j,_ in embedding_output_freqs:
     observed = pos_encoding_out_a_fft[i,j].item()
 
     print(i,j)
-    print(f"Observed: {observed:.2f}, Predicted: {predicted:.2f}, Relative Accuracy: {100*(1.0 - math.fabs(observed-predicted)/observed):.1f}%\n")
+    print(f"Observed: {observed:.2f}, Predicted: {predicted:.2f}, Relative Error: {100*math.fabs(observed-predicted)/observed:.1f}%\n")
 
 
 # calculate attention head 1 predicted frequencies and coefficients
@@ -118,8 +118,8 @@ Q,K,V = Q[32:64], K[32:64], V[32:64]
 
 _W_Q, _W_K, _W_V = torch.fft.ifft(Q @ W_E, dim=1, norm="forward"), torch.fft.ifft(K @ W_E, dim=1, norm="forward"), torch.fft.ifft(V @ W_E, dim=1, norm="forward")
 
-Z = 1.0/(2.0*module*math.sqrt(32)) # 32 = D/4 from softmax normalization
-B = 1.0/math.sqrt(module)
+Z = 1.0/(4.0*module*module*math.sqrt(32)) # 32 = D/4 from softmax normalization
+B = 1.0#1.0/math.sqrt(module)
 
 A       = B * (1 + Z*((_W_Q.T @ _W_K.conj())[29, 29] + (_W_Q.conj().T @ _W_K)[29, 29])) * _W_V
 A_      = B * (1 - Z*((_W_Q.T @ _W_K.conj())[29, 29] + (_W_Q.conj().T @ _W_K)[29, 29])) * _W_V
@@ -207,4 +207,4 @@ for i,j,_ in attention_output_freqs:
     observed = attn_output_a_2d_fft[i,j].item()
 
     print(i,j)
-    print(f"Observed: {observed:.2f}, Predicted: {predicted:.2f}, Relative Accuracy: {100*(1.0 - math.fabs(observed-predicted)/observed):.1f}%\n")
+    print(f"Observed: {observed:.2f}, Predicted: {predicted:.2f}, Relative Error: {100*math.fabs(observed-predicted)/observed:.1f}%\n")
