@@ -8,8 +8,8 @@ from torch.nn.parameter import Parameter
 import math
 
 # function to load the model and fix some weight name issues
-def remap_and_load_state_dict(model, state_dict_path, strict=True, weights_only=False):
-    original_state_dict = torch.load(state_dict_path, weights_only=weights_only)
+def remap_and_load_state_dict(model, state_dict_path, device, strict=True, weights_only=False):
+    original_state_dict = torch.load(state_dict_path, weights_only=weights_only, map_location=torch.device(device))
     
     remapped_state_dict = {}
     
@@ -66,7 +66,7 @@ class MultiHeadSelfAttention(Module):
     def __init__(self, embed_dim, n_heads):
         super().__init__()
         self.embed_dim = embed_dim
-        self.in_proj = Linear(embed_dim, 3*embed_dim, bias=False) # bias should be False
+        self.in_proj = Linear(embed_dim, 3*embed_dim) # bias should be False
         self.out_proj = Linear(embed_dim, embed_dim) # Also here?
         self.n_heads = n_heads
         self.head_dim = embed_dim // n_heads

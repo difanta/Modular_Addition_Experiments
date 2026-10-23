@@ -6,14 +6,14 @@ import math
 def createModularAdditionData(module: int):
     return torch.Tensor([[i, j, (i+j) % module] for i in range(module) for j in range(module)]).to(dtype=torch.int)
 
-def randomSplit(n: int, fractions: Tuple[float, float, float], device = None) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+def randomSplit(n: int, fractions: Tuple[float, float, float], device) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     factor = n/(fractions[0]+fractions[1]+fractions[2])
     indexes = torch.randperm(n, device=device)
 
     train_length = math.ceil(fractions[0]*factor)
     val_length = math.floor(fractions[1]*factor)
 
-    return indexes[0:train_length],  indexes[train_length : (train_length + val_length)], indexes[(train_length + val_length):]
+    return indexes[0:train_length], indexes[train_length : (train_length + val_length)], indexes[(train_length + val_length):]
 
 class CustomDataset(Dataset):
     def __init__(self, data, indexes):

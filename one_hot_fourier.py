@@ -1,7 +1,7 @@
 import torch
 from lib.visualization import visualize_2D_matrix
 import matplotlib.pyplot as plt
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device(torch.accelerator.current_accelerator())
 print(device)
 
 module = 113

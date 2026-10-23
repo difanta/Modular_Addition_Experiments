@@ -8,7 +8,7 @@ from torch.optim import AdamW
 from lib.train import train, cross_entropy_high_precision
 import json
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device(torch.accelerator.current_accelerator())
 print(device)
 
 module = 113

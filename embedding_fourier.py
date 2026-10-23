@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from lib.visualization import visualize_2D_matrix
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device(torch.accelerator.current_accelerator())
+
 print(device)
 
 module=113
@@ -13,7 +14,7 @@ model = Transformer(d_model=128, n_heads=4, mlp_dim_multiplier=4, vocab_size=mod
 
 PATH = "./data/transformer_clock"
 
-remap_and_load_state_dict(model, PATH+".pt", weights_only=True)
+remap_and_load_state_dict(model, PATH+".pt", device, weights_only=True, strict=True)
 model.eval()
 
 # Plot embedding and unembedding fourier components
