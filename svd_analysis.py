@@ -4,9 +4,27 @@ from torch.utils.data import DataLoader
 from lib.dataset import CustomDataset, createModularAdditionData, randomSplit
 from lib.train import get_best_accelerator
 from lib.transformer import Transformer, remap_and_load_state_dict
+from lib.visualization import visualize_2D_matrix
+import matplotlib.pyplot as plt
 
-def svd(matrix):
-    return torch.linalg.svd(matrix)
+def get_dft_basis(N, device='cpu', dtype=torch.complex64):
+    """
+    Returns the N x N unitary DFT matrix.
+    """
+    # Create indices from 0 to N-1
+    n = torch.arange(N, device=device)
+    
+    # Create a 2D grid of indices (N, N) using outer product
+    j, k = torch.meshgrid(n, n, indexing='ij')
+    
+    # Compute the complex exponential
+    # Note: In PyTorch, '1j' is the imaginary unit
+    W = torch.exp(-2j * torch.pi * j * k / N)
+    
+    # Normalize to make it unitary (so that W @ W.conj().T == I)
+    W = W / torch.sqrt(torch.tensor(float(N), device=device))
+
+    return W.to(dtype)
 
 def calc_fraction_energy_explained(S, k):
     return torch.sum((S[:k]**2) / torch.sum(S**2)).item()
@@ -26,7 +44,6 @@ def effective_rank(S):
     probs = (S**2)/torch.sum(S**2)
     entropy = torch.distributions.Categorical(probs=probs).entropy()
     eff_rank = torch.exp(entropy)
-    print(eff_rank)
     return torch.ceil(eff_rank).to(dtype=torch.long).item()
 
 def print_singular_values(S, k, all=False):
@@ -40,11 +57,13 @@ def select_lowrank(U,S,Vh,k):
     return U[:, :k], S[:k], Vh[:k, :]
 
 def basis_alignment(left, right):
-    k_left, k_right = left.size(1), right.size(1)
-    return ((torch.linalg.matrix_norm(left.mH @ right, ord="fro") ** 2) / float(min(k_left, k_right))).item()
+    #S = torch.linalg.svdvals(left.mH @ right)
+    #return torch.sqrt(torch.sum(S ** 2)/S.size(0)).item()
+    k = float(min(left.size(1), right.size(1)))
+    return (torch.linalg.matrix_norm(left.mH @ right, ord='fro').item() ** 2) / k
 
 def lowrank_svd(matrix):
-    U,S,Vh = svd(matrix)
+    U,S,Vh = torch.linalg.svd(matrix)
     k = effective_rank(S)
 
     U_k,S_k,Vh_k = select_lowrank(U,S,Vh,k)
@@ -79,22 +98,48 @@ a, b, label = (i.to(device) for i in next(iter(val_loader)))
 model(a, b)
 
 W_E = model.embedding.weight.data.T
-attn_proj = model.blocks.get_submodule("0.mha").in_proj.weight.data # type: ignore
-q, k, v = attn_proj[:128], attn_proj[128:256], attn_proj[256:384] # type: ignore
+W_U = model.unembed.weight.data
+print(W_E.shape, W_U.shape)
+attn_in_proj = model.blocks.get_submodule("0.mha").in_proj.weight.data # type: ignore
+q, k, v = attn_in_proj[:128], attn_in_proj[128:256], attn_in_proj[256:384] # type: ignore
+
+attn_out_proj = model.blocks.get_submodule("0.mha").out_proj.weight.data # type: ignore
 
 U_we,S_we,Vh_we,k_we, fract_we = lowrank_svd(W_E)
 U_q,S_q,Vh_q,k_q, fract_q = lowrank_svd(q)
 U_k,S_k,Vh_k,k_k, fract_k = lowrank_svd(k)
 U_v,S_v,Vh_v,k_v, fract_v = lowrank_svd(v)
+U_o,S_o,Vh_o,k_o, fract_o = lowrank_svd(attn_out_proj)
+U_wu,S_wu,Vh_wu,k_wu, fract_wu = lowrank_svd(W_U)
 
-print("W_E", k_we, fract_we, S_we)
-print("Query", k_q, fract_q, S_q)
-print("Key", k_k, fract_k, S_k)
-print("Value", k_v, fract_v, S_v)
+print("\nSingular values - matrix, effective rank k, fve, first k singular values:")
+print("\nW_E", k_we, fract_we, S_we)
+print("\nQuery", k_q, fract_q, S_q)
+print("\nKey", k_k, fract_k, S_k)
+print("\nValue", k_v, fract_v, S_v)
+print("\nOut Proj", k_o, fract_o, S_o)
+print("\nW_U", k_wu, fract_wu, S_wu)
 
-print("W_E, q", basis_alignment(U_we, Vh_q.mH))
-print("W_E, k", basis_alignment(U_we, Vh_k.mH))
-print("W_E, v", basis_alignment(U_we, Vh_v.mH))
+print("\nAlignment: Canonical, W_E", basis_alignment(torch.eye(module)[:, :k_we], Vh_we.mH))
+print("Alignment: Fourier, W_E", basis_alignment(get_dft_basis(module)[:, :k_we], Vh_we.mH.to(dtype=torch.complex64)))
 
-print("q, k", basis_alignment(Vh_q.mH, Vh_k.mH))
-print("q, v", basis_alignment(Vh_q.mH, Vh_v.mH))
+print("Alignment: W_E, q", basis_alignment(U_we, Vh_q.mH))
+print("Alignment: W_E, k", basis_alignment(U_we, Vh_k.mH))
+print("Alignment: W_E, v", basis_alignment(U_we, Vh_v.mH))
+
+print("\nAlignment: q, k", basis_alignment(Vh_q.mH, Vh_k.mH))
+print("Alignment: q, v", basis_alignment(Vh_q.mH, Vh_v.mH))
+
+print("\nAlignment: W_E, o", basis_alignment(U_we, Vh_o.mH))
+print("Alignment: o, W_U", basis_alignment(U_o, Vh_wu.mH))
+print("Alignment: W_E, W_U input vs output", basis_alignment(Vh_we.mH, U_wu))
+print("Alignment: W_E, W_U output vs input", basis_alignment(U_we, Vh_wu.mH))
+
+visualize_2D_matrix(Vh_we.cpu().numpy(), "\nVh of W_E, the input space basis")
+visualize_2D_matrix(U_we.cpu().numpy(), "U of W_E, the output space basis")
+
+visualize_2D_matrix(Vh_wu.cpu().numpy(), "\nVh of W_U, the input space basis")
+visualize_2D_matrix(U_wu.cpu().numpy(), "U of W_U, the output space basis")
+
+
+plt.show()
