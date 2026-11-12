@@ -1,4 +1,4 @@
-from lib.train import get_best_accelerator
+from lib.utility import get_best_accelerator
 from lib.transformer import Transformer, remap_and_load_state_dict
 import torch
 import matplotlib.pyplot as plt
@@ -101,7 +101,7 @@ fourier_2d_op_U = torch.fft.ifft(fourier_1d_U, dim=1, norm="ortho")
 #visualize_2D_matrix(torch.abs(fourier_1d_U.T).cpu().numpy(), "Unembedding Fourier 1D Magnitudes")
 #visualize_2D_matrix(torch.abs(fourier_2d_op_U).cpu().numpy(), "Unembedding Fourier 2D Magnitudes")
 
-#visualize_2D_matrix(torch.abs(torch.fft.ifft(q @ W_E, dim=1, norm="ortho").T @ torch.fft.ifft(k @ W_E, dim=1, norm="ortho")).cpu().numpy(), "Query.T @ Key")
+visualize_2D_matrix(torch.abs(torch.fft.ifft(q @ W_E, dim=1, norm="ortho").T @ torch.fft.ifft(k @ W_E, dim=1, norm="ortho")).cpu().numpy(), "Query.T @ Key")
 
 attn_out_proj = model.blocks.get_submodule("0.mha").out_proj.weight.data.detach() @ W_E # type: ignore
 fourier_1d_O = torch.fft.ifft(attn_out_proj, dim=1, norm="ortho")

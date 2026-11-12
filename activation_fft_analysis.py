@@ -3,14 +3,11 @@ from lib.transformer import Transformer, remap_and_load_state_dict
 import torch
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
-import numpy as np
 import json
-from lib.train import get_best_accelerator, test
-from lib.visualization import plot_learning_acc_and_loss, visualize_2D_matrix
+from lib.train import test
 from lib.metrics import fraction_variance_explained
+from lib.utility import get_best_accelerator
 from torch.nn import CrossEntropyLoss
-import math
-from fit_basis_to_activations import find_basis, get_dft_basis
 
 device = get_best_accelerator()
 print(device)
@@ -126,17 +123,6 @@ for idx in range(len(a)):
     mlp_post_act_b[_a, _b] = model.blocks.get_submodule("0").mlp_post_act[idx, 1].detach() # type: ignore
     mlp_output_b[_a, _b] = model.blocks.get_submodule("0").mlp_out[idx, 1].detach() # type:ignore
     logits_b[_a, _b] = model.logits[idx].detach()
-
-error, basis = find_basis(torch.stack([pos_encoding_out_b, mlp_in_b, mlp_output_b], dim=0).to(device))
-
-print(basis)
-
-W_E = model.embedding.weight.data.to(dtype=torch.complex64)
-visualize_2D_matrix(torch.abs(basis.mH @ W_E).cpu().numpy(), "Embedding Inverse 1D Fourier Magnitudes")
-
-visualize_2D_matrix(torch.abs(basis).cpu().numpy(), "Learned Basis")
-
-visualize_2D_matrix(torch.abs(basis.mH @ get_dft_basis(basis.size(0), device=basis.device, dtype=basis.dtype)).cpu().numpy(), "Basis.H @ DFT matrix") # type: ignore
 
 #visualize_2D_matrix(torch.mean(pos_encoding_out_b, dim=-1).cpu().numpy(), "pre-attention of token b")
 #pos_encoding_out_b_2d_fft = torch.fft.fft2(pos_encoding_out_b.permute(2, 0, 1))

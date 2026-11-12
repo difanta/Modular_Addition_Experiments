@@ -2,29 +2,20 @@ import json
 import torch
 from torch.utils.data import DataLoader
 from lib.dataset import CustomDataset, createModularAdditionData, randomSplit
-from lib.train import get_best_accelerator
+from lib.utility import get_best_accelerator
 from lib.transformer import Transformer, remap_and_load_state_dict
 from lib.visualization import visualize_2D_matrix
 import matplotlib.pyplot as plt
+from lib.utility import get_dft_basis, get_dht_basis
 
-def get_dft_basis(N, device='cpu', dtype=torch.complex64):
-    """
-    Returns the N x N unitary DFT matrix.
-    """
-    # Create indices from 0 to N-1
-    n = torch.arange(N, device=device)
-    
-    # Create a 2D grid of indices (N, N) using outer product
-    j, k = torch.meshgrid(n, n, indexing='ij')
-    
-    # Compute the complex exponential
-    # Note: In PyTorch, '1j' is the imaginary unit
-    W = torch.exp(-2j * torch.pi * j * k / N)
-    
-    # Normalize to make it unitary (so that W @ W.conj().T == I)
-    W = W / torch.sqrt(torch.tensor(float(N), device=device))
+def match_lowrank_disordered_basis_with_known_ordered_one(known, lowrank, name=None):
+    rows_energy = torch.linalg.vector_norm(known.mH @ lowrank, dim=1, ord=2) ** 2
+    ordered = torch.argsort(rows_energy, descending=True)
 
-    return W.to(dtype)
+    k = lowrank.size(1)
+    if name is not None:
+        print(f"{name} basis top-{k} matched components and energy", ordered[:k], rows_energy[ordered[:k]])
+    return known[:, ordered[:k]]
 
 def calc_fraction_energy_explained(S, k):
     return torch.sum((S[:k]**2) / torch.sum(S**2)).item()
@@ -57,10 +48,8 @@ def select_lowrank(U,S,Vh,k):
     return U[:, :k], S[:k], Vh[:k, :]
 
 def basis_alignment(left, right):
-    #S = torch.linalg.svdvals(left.mH @ right)
-    #return torch.sqrt(torch.sum(S ** 2)/S.size(0)).item()
     k = float(min(left.size(1), right.size(1)))
-    return (torch.linalg.matrix_norm(left.mH @ right, ord='fro').item() ** 2) / k
+    return ((torch.linalg.matrix_norm(left.mH @ right, ord='fro') ** 2) / k).item()
 
 def lowrank_svd(matrix):
     U,S,Vh = torch.linalg.svd(matrix)
@@ -120,8 +109,14 @@ print("\nValue", k_v, fract_v, S_v)
 print("\nOut Proj", k_o, fract_o, S_o)
 print("\nW_U", k_wu, fract_wu, S_wu)
 
-print("\nAlignment: Canonical, W_E", basis_alignment(torch.eye(module)[:, :k_we], Vh_we.mH))
-print("Alignment: Fourier, W_E", basis_alignment(get_dft_basis(module)[:, :k_we], Vh_we.mH.to(dtype=torch.complex64)))
+matched_dft = match_lowrank_disordered_basis_with_known_ordered_one(get_dft_basis(module), Vh_we.mH.to(dtype=torch.complex64), name="Fourier")
+matched_dht = match_lowrank_disordered_basis_with_known_ordered_one(get_dht_basis(module), Vh_we.mH, name="Hartley")
+
+#print("\nAlignment: Canonical, W_E", basis_alignment(torch.eye(module)[:k_we], Vh_we.mH))
+print("Alignment: Fourier Transform, W_E", basis_alignment(matched_dft, Vh_we.mH.to(dtype=torch.complex64)))
+#print("Alignment: Fourier Transform, W_E", dht_alignment_full(get_dft_basis(module), Vh_we.mH.to(dtype=torch.complex64)))
+print("Alignment: Hartley Transform, W_E", basis_alignment(matched_dht, Vh_we.mH))
+#print("Alignment: Hartley Transform, W_E", dht_alignment_full(get_dht_basis(module), Vh_we.mH))
 
 print("Alignment: W_E, q", basis_alignment(U_we, Vh_q.mH))
 print("Alignment: W_E, k", basis_alignment(U_we, Vh_k.mH))
@@ -129,17 +124,23 @@ print("Alignment: W_E, v", basis_alignment(U_we, Vh_v.mH))
 
 print("\nAlignment: q, k", basis_alignment(Vh_q.mH, Vh_k.mH))
 print("Alignment: q, v", basis_alignment(Vh_q.mH, Vh_v.mH))
+print("Alignment: k, v", basis_alignment(Vh_k.mH, Vh_v.mH))
 
 print("\nAlignment: W_E, o", basis_alignment(U_we, Vh_o.mH))
 print("Alignment: o, W_U", basis_alignment(U_o, Vh_wu.mH))
 print("Alignment: W_E, W_U input vs output", basis_alignment(Vh_we.mH, U_wu))
 print("Alignment: W_E, W_U output vs input", basis_alignment(U_we, Vh_wu.mH))
 
-visualize_2D_matrix(Vh_we.cpu().numpy(), "\nVh of W_E, the input space basis")
-visualize_2D_matrix(U_we.cpu().numpy(), "U of W_E, the output space basis")
+print(U_we.shape, Vh_wu.shape)
 
-visualize_2D_matrix(Vh_wu.cpu().numpy(), "\nVh of W_U, the input space basis")
-visualize_2D_matrix(U_wu.cpu().numpy(), "U of W_U, the output space basis")
+visualize_2D_matrix(matched_dht.cpu().numpy(), "\nDHT matched with Vh of W_E, the input space basis")
+visualize_2D_matrix(matched_dft.abs().cpu().numpy(), "\nDFT matched with Vh of W_E, the input space basis")
+
+visualize_2D_matrix(Vh_we.mH.cpu().numpy(), "\nVh of W_E, the input space basis")
+#visualize_2D_matrix(U_we.cpu().numpy(), "U of W_E, the output space basis")
+
+#visualize_2D_matrix(Vh_wu.mH.cpu().numpy(), "\nVh of W_U, the input space basis")
+#visualize_2D_matrix(U_wu.cpu().numpy(), "U of W_U, the output space basis")
 
 
 plt.show()

@@ -2,12 +2,10 @@ from lib.dataset import createModularAdditionData, randomSplit, CustomDataset
 from lib.transformer import Transformer, remap_and_load_state_dict
 import torch
 from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
-import numpy as np
 import json
-from lib.train import get_best_accelerator, test
-from lib.visualization import plot_learning_acc_and_loss, visualize_2D_matrix
-from lib.metrics import fraction_variance_explained, compare_frequency_full_vs_subset
+from lib.train import test
+from lib.metrics import compare_frequency_full_vs_subset
+from lib.utility import get_best_accelerator
 from torch.nn import CrossEntropyLoss
 import math
 
