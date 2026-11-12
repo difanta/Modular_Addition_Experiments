@@ -5,7 +5,8 @@ from torch.utils.data import DataLoader
 from torchinfo import summary
 from torch.nn import MSELoss, CrossEntropyLoss
 from torch.optim import AdamW
-from lib.train import get_best_accelerator, train, cross_entropy_high_precision
+from lib.train import train, cross_entropy_high_precision
+from lib.utility import get_best_accelerator
 import json
 
 device = get_best_accelerator()
