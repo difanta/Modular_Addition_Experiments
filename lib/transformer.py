@@ -85,7 +85,7 @@ class MultiHeadSelfAttention(Module):
         logits = (q @ k.transpose(-2, -1))/math.sqrt(self.head_dim)
         scores = torch.softmax(logits, dim=-1) #(1/logits.size(-1))*(1 + logits - torch.mean(logits, dim=-1, keepdim=True))
         
-        pre_out_proj = torch.stack((scores[:, :, 0, 0].unsqueeze(-1) * v[:, :, 0], scores[:, :, 0, 1].unsqueeze(-1) * v[:, :, 1]), dim=2)
+        pre_out_proj = torch.stack((scores[:, :, 1, 0].unsqueeze(-1) * v[:, :, 0], scores[:, :, 1, 1].unsqueeze(-1) * v[:, :, 1]), dim=2)
         output = scores @ v
         output = output.transpose(1, 2).contiguous().view(B, T, H)
 

@@ -9,6 +9,8 @@ from lib.metrics import fraction_variance_explained
 from lib.utility import get_best_accelerator
 from torch.nn import CrossEntropyLoss
 
+from lib.visualization import visualize_2D_matrix
+
 device = get_best_accelerator()
 print(device)
 
@@ -83,11 +85,11 @@ model(a, b)
 label = label.to(dtype=torch.long)
 
 logit_matrix = torch.empty(size=(module, module))
-attn_logit_matrix_a_to_b = torch.empty(size=(module, module))
-attn_logit_matrix_a_to_a = torch.empty(size=(module, module))
+attn_logit_matrix_b_to_a = torch.empty(size=(module, module))
+attn_logit_matrix_b_to_b = torch.empty(size=(module, module))
 attn_output_from_b_to_a = torch.empty(size=(module, module, 32))
-attn_output_from_a_to_a = torch.empty(size=(module, module, 32))
-attn_output_a = torch.empty(size=(module, module, 32))
+attn_output_from_b_to_b = torch.empty(size=(module, module, 32))
+attn_output_b = torch.empty(size=(module, module, 32))
 
 pos_encoding_out_b = torch.empty(size=(module, module, 128))
 mha_output_b = torch.empty(size=(module, module, 128))
@@ -106,13 +108,13 @@ for idx in range(len(a)):
 
     attn_weights = model.blocks.get_submodule("0").attn_weights[idx].detach() # type: ignore    
     attn_logits = torch.log(attn_weights) - torch.mean(torch.log(attn_weights), dim=-1, keepdim=True)
-    attn_logit_matrix_a_to_b[_a, _b] = attn_weights[1, 1, 0]
-    attn_logit_matrix_a_to_a[_a, _b] = attn_weights[1, 0, 0]
+    attn_logit_matrix_b_to_a[_a, _b] = attn_weights[1, 1, 0]
+    attn_logit_matrix_b_to_b[_a, _b] = attn_weights[1, 1, 1]
 
     attn_pre_out = model.blocks.get_submodule("0").attn_pre_out[idx].detach() # type: ignore
-    attn_output_from_b_to_a[_a, _b] = attn_pre_out[1, 1]
-    attn_output_from_a_to_a[_a, _b] = attn_pre_out[1, 0]
-    attn_output_a[_a, _b] = attn_pre_out[1, 1] + attn_pre_out[1, 0]
+    attn_output_from_b_to_a[_a, _b] = attn_pre_out[1, 0]
+    attn_output_from_b_to_b[_a, _b] = attn_pre_out[1, 1]
+    attn_output_b[_a, _b] = attn_pre_out[1, 0] + attn_pre_out[1, 1]
 
     pos_encoding_out_b[_a, _b] = model.pos_encoding_out[idx, 1].detach() # type: ignore
 
@@ -125,16 +127,16 @@ for idx in range(len(a)):
     logits_b[_a, _b] = model.logits[idx].detach()
 
 #visualize_2D_matrix(torch.mean(pos_encoding_out_b, dim=-1).cpu().numpy(), "pre-attention of token b")
-#pos_encoding_out_b_2d_fft = torch.fft.fft2(pos_encoding_out_b.permute(2, 0, 1))
-#visualize_2D_matrix(torch.mean(torch.abs(pos_encoding_out_b_2d_fft), dim=0).cpu().numpy(), "pre-attention of token b, fourier 2D")
+pos_encoding_out_b_2d_fft = torch.fft.fft2(pos_encoding_out_b.permute(2, 0, 1))
+visualize_2D_matrix(torch.mean(torch.abs(pos_encoding_out_b_2d_fft), dim=0).cpu().numpy(), "pre-attention of token b, fourier 2D")
 
 #visualize_2D_matrix(torch.mean(mha_output_b, dim=-1).cpu().numpy(), "multiheadattention output of token b")
 #mha_output_b_2d_fft = torch.fft.fft2(mha_output_b.permute(2, 0, 1))
 #visualize_2D_matrix(torch.mean(torch.abs(mha_output_b_2d_fft), dim=0).cpu().numpy(), "multiheadattention output of token b, fourier 2D")
 
 #visualize_2D_matrix(torch.mean(mlp_in_b, dim=-1).cpu().numpy(), "mlp input of token b")
-#mlp_in_b_2d_fft = torch.fft.fft2(mlp_in_b.permute(2, 0, 1))
-#visualize_2D_matrix(torch.mean(torch.abs(mlp_in_b_2d_fft), dim=0).cpu().numpy(), "mlp input of token b, fourier 2D")
+mlp_in_b_2d_fft = torch.fft.fft2(mlp_in_b.permute(2, 0, 1))
+visualize_2D_matrix(torch.mean(torch.abs(mlp_in_b_2d_fft), dim=0).cpu().numpy(), "mlp input of token b, fourier 2D")
 
 #visualize_2D_matrix(torch.mean(mlp_pre_act_b, dim=-1).cpu().numpy(), "mlp preactivations of token b")
 #mlp_pre_act_b_2d_fft = torch.fft.fft2(mlp_pre_act_b.permute(2, 0, 1))
@@ -145,12 +147,12 @@ for idx in range(len(a)):
 #visualize_2D_matrix(torch.mean(torch.abs(mlp_post_act_b_2d_fft), dim=0).cpu().numpy(), "mlp activations of token b, fourier 2D")
 
 #visualize_2D_matrix(torch.mean(mlp_output_b, dim=-1).cpu().numpy(), "mlp output of token b")
-#mlp_output_b_2d_fft = torch.fft.fft2(mlp_output_b.permute(2, 0, 1))
-#visualize_2D_matrix(torch.mean(torch.abs(mlp_output_b_2d_fft), dim=0).cpu().numpy(), "mlp output of token b, fourier 2D")
+mlp_output_b_2d_fft = torch.fft.fft2(mlp_output_b.permute(2, 0, 1))
+visualize_2D_matrix(torch.mean(torch.abs(mlp_output_b_2d_fft), dim=0).cpu().numpy(), "mlp output of token b, fourier 2D")
 
 #visualize_2D_matrix(torch.mean(logits_b, dim=-1).cpu().numpy(), "logits of token b")
-#logits_b_2d_fft = torch.fft.fft2(logits_b.permute(2, 0, 1))
-#visualize_2D_matrix(torch.mean(torch.abs(logits_b_2d_fft), dim=0).cpu().numpy(), "logits of token b, fourier 2D")
+logits_b_2d_fft = torch.fft.fft2(logits_b.permute(2, 0, 1))
+visualize_2D_matrix(torch.mean(torch.abs(logits_b_2d_fft), dim=0).cpu().numpy(), "logits of token b, fourier 2D")
 
 #visualize_2D_matrix(logit_matrix.cpu().numpy(), "Correct logit dependence on sum and difference of inputs")
 
@@ -160,14 +162,14 @@ for idx in range(len(a)):
 #visualize_2D_matrix(torch.abs(torch.fft.fft2(attn_logit_matrix_a_to_a)).cpu().numpy(), "Attention given to a by a, 2D transform")
 
 #visualize_2D_matrix(torch.mean(attn_output_from_b_to_a, dim=-1).cpu().numpy(), "Attention output of token a with respect to b")
-#visualize_2D_matrix(torch.mean(attn_output_from_a_to_a, dim=-1).cpu().numpy(), "Attention output of token a with respect to a")
-#visualize_2D_matrix(torch.mean(attn_output_a, dim=-1).cpu().numpy(), "Attention output of token a")
+#visualize_2D_matrix(torch.mean(attn_output_from_b_to_b, dim=-1).cpu().numpy(), "Attention output of token a with respect to a")
+#visualize_2D_matrix(torch.mean(attn_output_b, dim=-1).cpu().numpy(), "Attention output of token a")
 attn_output_from_b_to_a_2d_fft = torch.fft.fft2(attn_output_from_b_to_a.permute(2, 0, 1))
-#visualize_2D_matrix(torch.mean(torch.abs(attn_output_from_b_to_a_2d_fft), dim=0).cpu().numpy(), "Attention output of token a with respect to b, fourier 2D")
-attn_output_from_a_to_a_2d_fft = torch.fft.fft2(attn_output_from_a_to_a.permute(2, 0, 1))
-#visualize_2D_matrix(torch.mean(torch.abs(attn_output_from_a_to_a_2d_fft), dim=0).cpu().numpy(), "Attention output of token a with respect to a, fourier 2D")
-attn_output_a_2d_fft = torch.fft.ifft2(attn_output_a.permute(2, 0, 1), norm="ortho")
-#visualize_2D_matrix(torch.mean(torch.abs(attn_output_a_2d_fft), dim=0).cpu().numpy(), "Attention output of token a, fourier 2D")
+visualize_2D_matrix(torch.mean(torch.abs(attn_output_from_b_to_a_2d_fft), dim=0).cpu().numpy(), "Attention output of token a with respect to b, fourier 2D")
+attn_output_from_b_to_b_2d_fft = torch.fft.fft2(attn_output_from_b_to_b.permute(2, 0, 1))
+visualize_2D_matrix(torch.mean(torch.abs(attn_output_from_b_to_b_2d_fft), dim=0).cpu().numpy(), "Attention output of token a with respect to a, fourier 2D")
+attn_output_b_2d_fft = torch.fft.ifft2(attn_output_b.permute(2, 0, 1), norm="ortho")
+visualize_2D_matrix(torch.mean(torch.abs(attn_output_b_2d_fft), dim=0).cpu().numpy(), "Attention output of token a, fourier 2D")
 
 W_E = model.embedding.weight.data.cpu()
 centered_normalized_W_E = torch.nn.functional.normalize(W_E, p=2, dim=1)

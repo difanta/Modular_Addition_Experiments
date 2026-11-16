@@ -58,7 +58,7 @@ def plot_learning_acc_and_loss(loss_tr, acc_tr, loss_val, acc_val, norm=None, gr
     plt.tight_layout()  
     plt.show(block=block)
 
-def visualize_2D_matrix(matrix, title):
+def visualize_2D_matrix(matrix, title=None):
     # Create a white-to-blue colormap
     cmap = LinearSegmentedColormap.from_list("white_blue", ["white", "blue"])
 
@@ -82,7 +82,8 @@ def visualize_2D_matrix(matrix, title):
     ax.grid(which="minor", color="gray", linestyle="--", linewidth=0.5)
     ax.tick_params(which="minor", length=0) # Hide the minor tick marks themselves
 
-    ax.set_title(title)
+    if title is not None:
+        ax.set_title(title)
     fig.colorbar(im, ax=ax, label="Value")
     plt.tight_layout()
     plt.show(block=False)
