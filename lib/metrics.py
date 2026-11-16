@@ -32,13 +32,20 @@ def calc_grad_norm(model: Module, name_exploded_gradients=False):
   return total_norm ** 0.5
 
 def compare_frequency_full_vs_subset(freqs, indices):
-    full = torch.linalg.norm(freqs, ord="fro").item()
-
     rows, cols = zip(*indices)
-    subset = freqs[rows, cols]
+    
+    residual = freqs.clone()
+    residual[rows, cols] = 0
 
-    selected = torch.linalg.norm(subset, ord=2).item() # because subset is now a 1D vector after selecting
+    full = torch.linalg.norm(freqs, ord="fro").item()
+    relative_residual = torch.linalg.matrix_norm(residual, ord="fro").item() / full
+    relative_variance = 1.0 - (relative_residual ** 2)
 
-    print("Norm of the full frequencies vs norm of the selected frequencies:", full, selected)
-    print("Residual norm after removing the selected frequencies:", math.fabs(full-selected)*100/full, "%")
-    print("Minimal value of the selected frequencies:", torch.min(subset).item())
+    print(f"Residual Norm: {100 * relative_residual:.2f}%")
+    print(f"Relative Energy captured: {100 * relative_variance:.2f}%")
+
+    #selected = torch.linalg.norm(subset, ord=2).item() # because subset is now a 1D vector after selecting
+
+    #print("Norm of the full frequencies vs norm of the selected frequencies:", full, selected)
+    #print("Residual norm after removing the selected frequencies:", math.fabs(full-selected)*100/full, "%")
+    #print("Minimal value of the selected frequencies:", torch.min(subset).item())
