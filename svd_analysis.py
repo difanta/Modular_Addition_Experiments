@@ -10,12 +10,12 @@ from lib.utility import get_dft_basis, get_dht_basis
 
 def match_lowrank_disordered_basis_with_known_ordered_one(known, lowrank, name=None):
     rows_energy = torch.linalg.vector_norm(known.mH @ lowrank, dim=1, ord=2) ** 2
-    ordered = torch.argsort(rows_energy, descending=True)
+    ordered_indices = torch.argsort(rows_energy, descending=True)
 
     k = lowrank.size(1)
     if name is not None:
-        print(f"{name} basis top-{k} matched components and energy", ordered[:k], rows_energy[ordered[:k]])
-    return known[:, ordered[:k]]
+        print(f"\n{name} basis top-{k} matched components index and energy: \n\t", ordered_indices[:k], rows_energy[ordered_indices[:k]])
+    return known[:, ordered_indices[:k]]
 
 def calc_fraction_energy_explained(S, k):
     return torch.sum((S[:k]**2) / torch.sum(S**2)).item()
@@ -109,16 +109,25 @@ print("\nValue", k_v, fract_v, S_v)
 print("\nOut Proj", k_o, fract_o, S_o)
 print("\nW_U", k_wu, fract_wu, S_wu)
 
-matched_dft = match_lowrank_disordered_basis_with_known_ordered_one(get_dft_basis(module), Vh_we.mH.to(dtype=torch.complex64), name="Fourier")
-matched_dht = match_lowrank_disordered_basis_with_known_ordered_one(get_dht_basis(module), Vh_we.mH, name="Hartley")
+matched_dft_Vh = match_lowrank_disordered_basis_with_known_ordered_one(get_dft_basis(module, device=Vh_we.device), Vh_we.mH.to(dtype=torch.complex64), name="Fourier")
+matched_dft_U = match_lowrank_disordered_basis_with_known_ordered_one(get_dft_basis(U_we.size(0), device=U_we.device), U_we.to(dtype=torch.complex64), name="Fourier")
 
-#print("\nAlignment: Canonical, W_E", basis_alignment(torch.eye(module)[:k_we], Vh_we.mH))
-print("Alignment: Fourier Transform, W_E", basis_alignment(matched_dft, Vh_we.mH.to(dtype=torch.complex64)))
-#print("Alignment: Fourier Transform, W_E", dht_alignment_full(get_dft_basis(module), Vh_we.mH.to(dtype=torch.complex64)))
-print("Alignment: Hartley Transform, W_E", basis_alignment(matched_dht, Vh_we.mH))
-#print("Alignment: Hartley Transform, W_E", dht_alignment_full(get_dht_basis(module), Vh_we.mH))
+matched_dht_Vh = match_lowrank_disordered_basis_with_known_ordered_one(get_dht_basis(module, device=Vh_we.device), Vh_we.mH, name="Hartley")
+matched_dht_U = match_lowrank_disordered_basis_with_known_ordered_one(get_dht_basis(U_we.size(0), device=U_we.device), U_we, name="Hartley")
 
-print("Alignment: W_E, q", basis_alignment(U_we, Vh_q.mH))
+matched_canonical_Vh = match_lowrank_disordered_basis_with_known_ordered_one(torch.eye(module, device=Vh_we.device, dtype=Vh_we.dtype), Vh_we.mH, name="Canonical")
+matched_canonical_U = match_lowrank_disordered_basis_with_known_ordered_one(torch.eye(U_we.size(0), device=U_we.device, dtype=U_we.dtype), U_we, name="Canonical")
+
+print("\nAlignment: Fourier Transform, Vh of W_E", basis_alignment(matched_dft_Vh, Vh_we.mH.to(dtype=torch.complex64)))
+print("Alignment: Fourier Transform, U of W_E", basis_alignment(matched_dft_U, U_we.to(dtype=torch.complex64)))
+
+print("\nAlignment: Hartley Transform, Vh of W_E", basis_alignment(matched_dht_Vh, Vh_we.mH))
+print("Alignment: Hartley Transform, U of W_E", basis_alignment(matched_dht_U, U_we))
+
+print("\nAlignment: Canonical, Vh of W_E", basis_alignment(matched_canonical_Vh, Vh_we.mH))
+print("Alignment: Canonical, U of W_E", basis_alignment(matched_canonical_U, U_we))
+
+print("\nAlignment: W_E, q", basis_alignment(U_we, Vh_q.mH))
 print("Alignment: W_E, k", basis_alignment(U_we, Vh_k.mH))
 print("Alignment: W_E, v", basis_alignment(U_we, Vh_v.mH))
 
@@ -133,11 +142,17 @@ print("Alignment: W_E, W_U output vs input", basis_alignment(U_we, Vh_wu.mH))
 
 print(U_we.shape, Vh_wu.shape)
 
-visualize_2D_matrix(matched_dht.cpu().numpy(), "\nDHT matched with Vh of W_E, the input space basis")
-visualize_2D_matrix(matched_dft.abs().cpu().numpy(), "\nDFT matched with Vh of W_E, the input space basis")
+visualize_2D_matrix(matched_dht_Vh.cpu().numpy(), "\nDHT matched with Vh of W_E, the input space basis")
+visualize_2D_matrix(matched_dht_U.cpu().numpy(), "\nDHT matched with U of W_E, the input space basis")
+
+visualize_2D_matrix(matched_dft_Vh.abs().cpu().numpy(), "\nDFT matched with Vh of W_E, the input space basis")
+visualize_2D_matrix(matched_dft_U.abs().cpu().numpy(), "\nDFT matched with U of W_E, the input space basis")
+
+visualize_2D_matrix(matched_canonical_Vh.cpu().numpy(), "\nCanonical matched with Vh of W_E, the input space basis")
+visualize_2D_matrix(matched_canonical_U.cpu().numpy(), "\nCanonical matched with U of W_E, the input space basis")
 
 visualize_2D_matrix(Vh_we.mH.cpu().numpy(), "\nVh of W_E, the input space basis")
-#visualize_2D_matrix(U_we.cpu().numpy(), "U of W_E, the output space basis")
+visualize_2D_matrix(U_we.cpu().numpy(), "U of W_E, the output space basis")
 
 #visualize_2D_matrix(Vh_wu.mH.cpu().numpy(), "\nVh of W_U, the input space basis")
 #visualize_2D_matrix(U_wu.cpu().numpy(), "U of W_U, the output space basis")
