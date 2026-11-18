@@ -47,7 +47,7 @@ def print_singular_values(S, k, all=False):
 def select_lowrank(U,S,Vh,k):
     return U[:, :k], S[:k], Vh[:k, :]
 
-def basis_alignment(left, right):
+def basis_similarity(left, right):
     k = float(min(left.size(1), right.size(1)))
     return ((torch.linalg.matrix_norm(left.mH @ right, ord='fro') ** 2) / k).item()
 
@@ -118,44 +118,41 @@ matched_dht_U = match_lowrank_disordered_basis_with_known_ordered_one(get_dht_ba
 matched_canonical_Vh = match_lowrank_disordered_basis_with_known_ordered_one(torch.eye(module, device=Vh_we.device, dtype=Vh_we.dtype), Vh_we.mH, name="Canonical")
 matched_canonical_U = match_lowrank_disordered_basis_with_known_ordered_one(torch.eye(U_we.size(0), device=U_we.device, dtype=U_we.dtype), U_we, name="Canonical")
 
-print("\nAlignment: Fourier Transform, Vh of W_E", basis_alignment(matched_dft_Vh, Vh_we.mH.to(dtype=torch.complex64)))
-print("Alignment: Fourier Transform, U of W_E", basis_alignment(matched_dft_U, U_we.to(dtype=torch.complex64)))
+print("\nSimilarity: Fourier Transform, Vh of W_E", basis_similarity(matched_dft_Vh, Vh_we.mH.to(dtype=torch.complex64)))
+print("Similarity: Fourier Transform, U of W_E", basis_similarity(matched_dft_U, U_we.to(dtype=torch.complex64)))
 
-print("\nAlignment: Hartley Transform, Vh of W_E", basis_alignment(matched_dht_Vh, Vh_we.mH))
-print("Alignment: Hartley Transform, U of W_E", basis_alignment(matched_dht_U, U_we))
+print("\nSimilarity: Hartley Transform, Vh of W_E", basis_similarity(matched_dht_Vh, Vh_we.mH))
+print("Similarity: Hartley Transform, U of W_E", basis_similarity(matched_dht_U, U_we))
 
-print("\nAlignment: Canonical, Vh of W_E", basis_alignment(matched_canonical_Vh, Vh_we.mH))
-print("Alignment: Canonical, U of W_E", basis_alignment(matched_canonical_U, U_we))
+print("\nSimilarity: Canonical, Vh of W_E", basis_similarity(matched_canonical_Vh, Vh_we.mH))
+print("Similarity: Canonical, U of W_E", basis_similarity(matched_canonical_U, U_we))
 
-print("\nAlignment: W_E, q", basis_alignment(U_we, Vh_q.mH))
-print("Alignment: W_E, k", basis_alignment(U_we, Vh_k.mH))
-print("Alignment: W_E, v", basis_alignment(U_we, Vh_v.mH))
+print("\nSimilarity: W_E, q", basis_similarity(U_we, Vh_q.mH))
+print("Similarity: W_E, k", basis_similarity(U_we, Vh_k.mH))
+print("Similarity: W_E, v", basis_similarity(U_we, Vh_v.mH))
 
-print("\nAlignment: q, k", basis_alignment(Vh_q.mH, Vh_k.mH))
-print("Alignment: q, v", basis_alignment(Vh_q.mH, Vh_v.mH))
-print("Alignment: k, v", basis_alignment(Vh_k.mH, Vh_v.mH))
+print("\nSimilarity: q, k", basis_similarity(Vh_q.mH, Vh_k.mH))
+print("Similarity: q, v", basis_similarity(Vh_q.mH, Vh_v.mH))
+print("Similarity: k, v", basis_similarity(Vh_k.mH, Vh_v.mH))
 
-print("\nAlignment: W_E, o", basis_alignment(U_we, Vh_o.mH))
-print("Alignment: o, W_U", basis_alignment(U_o, Vh_wu.mH))
-print("Alignment: W_E, W_U input vs output", basis_alignment(Vh_we.mH, U_wu))
-print("Alignment: W_E, W_U output vs input", basis_alignment(U_we, Vh_wu.mH))
-
-print(U_we.shape, Vh_wu.shape)
+print("\nSimilarity: W_E, o", basis_similarity(U_we, Vh_o.mH))
+print("Similarity: o, W_U", basis_similarity(U_o, Vh_wu.mH))
+print("Similarity: W_E, W_U input vs output", basis_similarity(Vh_we.mH, U_wu))
+print("Similarity: W_E, W_U output vs input", basis_similarity(U_we, Vh_wu.mH))
 
 visualize_2D_matrix(matched_dht_Vh.cpu().numpy(), "\nDHT matched with Vh of W_E, the input space basis")
-visualize_2D_matrix(matched_dht_U.cpu().numpy(), "\nDHT matched with U of W_E, the input space basis")
+#visualize_2D_matrix(matched_dht_U.cpu().numpy(), "\nDHT matched with U of W_E, the input space basis")
 
-visualize_2D_matrix(matched_dft_Vh.abs().cpu().numpy(), "\nDFT matched with Vh of W_E, the input space basis")
-visualize_2D_matrix(matched_dft_U.abs().cpu().numpy(), "\nDFT matched with U of W_E, the input space basis")
+#visualize_2D_matrix(matched_dft_Vh.abs().cpu().numpy(), "\nDFT matched with Vh of W_E, the input space basis")
+#visualize_2D_matrix(matched_dft_U.abs().cpu().numpy(), "\nDFT matched with U of W_E, the input space basis")
 
 visualize_2D_matrix(matched_canonical_Vh.cpu().numpy(), "\nCanonical matched with Vh of W_E, the input space basis")
-visualize_2D_matrix(matched_canonical_U.cpu().numpy(), "\nCanonical matched with U of W_E, the input space basis")
+#visualize_2D_matrix(matched_canonical_U.cpu().numpy(), "\nCanonical matched with U of W_E, the input space basis")
 
 visualize_2D_matrix(Vh_we.mH.cpu().numpy(), "\nVh of W_E, the input space basis")
-visualize_2D_matrix(U_we.cpu().numpy(), "U of W_E, the output space basis")
+#visualize_2D_matrix(U_we.cpu().numpy(), "U of W_E, the output space basis")
 
 #visualize_2D_matrix(Vh_wu.mH.cpu().numpy(), "\nVh of W_U, the input space basis")
 #visualize_2D_matrix(U_wu.cpu().numpy(), "U of W_U, the output space basis")
-
 
 plt.show()
