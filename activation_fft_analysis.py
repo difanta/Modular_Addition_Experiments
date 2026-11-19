@@ -9,7 +9,7 @@ from lib.metrics import fraction_variance_explained
 from lib.utility import get_best_accelerator
 from torch.nn import CrossEntropyLoss
 
-from lib.visualization import visualize_2D_matrix
+from lib.visualization import plot_learning_acc_and_loss, visualize_2D_matrix
 
 device = get_best_accelerator()
 print(device)
@@ -27,7 +27,7 @@ val_loader = DataLoader(val_dataset, batch_size=len(val_dataset), shuffle=False,
 
 model = Transformer(d_model=128, n_heads=4, mlp_dim_multiplier=4, vocab_size=module, n_layers=1, constant_attn=False).to(device)
 
-PATH = "./data/transformer_clock"
+PATH = "./data/transformer_clock_1"
 
 remap_and_load_state_dict(model, PATH+".pt", device, weights_only=True, strict=False)
 model.eval()
@@ -47,7 +47,7 @@ test(model, CrossEntropyLoss(), val_loader, device)
 
 W_E = model.embedding.weight.data.T.to(dtype=torch.complex64)
 print(W_E.shape)
-#plot_learning_acc_and_loss(loss_tr=results["loss_train"], acc_tr=results["acc_train"], loss_val=results["loss_val"], acc_val=results["acc_val"], norm=results["norm"], gradient_norm=results["grad_norm"], block=False)
+plot_learning_acc_and_loss(loss_tr=results["loss_train"], acc_tr=results["acc_train"], loss_val=results["loss_val"], acc_val=results["acc_val"], norm=results["norm"], gradient_norm=results["grad_norm"], block=False)
 
 # Test the impact of certain activations on the output
 

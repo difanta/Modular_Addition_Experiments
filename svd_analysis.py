@@ -109,23 +109,23 @@ print("\nValue", k_v, fract_v, S_v)
 print("\nOut Proj", k_o, fract_o, S_o)
 print("\nW_U", k_wu, fract_wu, S_wu)
 
-matched_dft_Vh = match_lowrank_disordered_basis_with_known_ordered_one(get_dft_basis(module, device=Vh_we.device), Vh_we.mH.to(dtype=torch.complex64), name="Fourier")
-matched_dft_U = match_lowrank_disordered_basis_with_known_ordered_one(get_dft_basis(U_we.size(0), device=U_we.device), U_we.to(dtype=torch.complex64), name="Fourier")
+matched_dft_Vh = match_lowrank_disordered_basis_with_known_ordered_one(get_dft_basis(Vh_wu.mH.size(0), device=Vh_wu.device), Vh_wu.mH.to(dtype=torch.complex64), name="Fourier")
+matched_dft_U = match_lowrank_disordered_basis_with_known_ordered_one(get_dft_basis(module, device=U_wu.device), U_wu.to(dtype=torch.complex64), name="Fourier")
 
-matched_dht_Vh = match_lowrank_disordered_basis_with_known_ordered_one(get_dht_basis(module, device=Vh_we.device), Vh_we.mH, name="Hartley")
-matched_dht_U = match_lowrank_disordered_basis_with_known_ordered_one(get_dht_basis(U_we.size(0), device=U_we.device), U_we, name="Hartley")
+matched_dht_Vh = match_lowrank_disordered_basis_with_known_ordered_one(get_dht_basis(Vh_wu.mH.size(0), device=Vh_wu.device), Vh_wu.mH, name="Hartley")
+matched_dht_U = match_lowrank_disordered_basis_with_known_ordered_one(get_dht_basis(module, device=U_wu.device), U_wu, name="Hartley")
 
-matched_canonical_Vh = match_lowrank_disordered_basis_with_known_ordered_one(torch.eye(module, device=Vh_we.device, dtype=Vh_we.dtype), Vh_we.mH, name="Canonical")
-matched_canonical_U = match_lowrank_disordered_basis_with_known_ordered_one(torch.eye(U_we.size(0), device=U_we.device, dtype=U_we.dtype), U_we, name="Canonical")
+matched_canonical_Vh = match_lowrank_disordered_basis_with_known_ordered_one(torch.eye(Vh_wu.mH.size(0), device=Vh_wu.device, dtype=Vh_wu.dtype), Vh_wu.mH, name="Canonical")
+matched_canonical_U = match_lowrank_disordered_basis_with_known_ordered_one(torch.eye(module, device=U_wu.device, dtype=U_wu.dtype), U_wu, name="Canonical")
 
-print("\nSimilarity: Fourier Transform, Vh of W_E", basis_similarity(matched_dft_Vh, Vh_we.mH.to(dtype=torch.complex64)))
-print("Similarity: Fourier Transform, U of W_E", basis_similarity(matched_dft_U, U_we.to(dtype=torch.complex64)))
+print("\nSimilarity: Fourier Transform, Vh of W_U", basis_similarity(matched_dft_Vh, Vh_wu.mH.to(dtype=torch.complex64)))
+print("Similarity: Fourier Transform, U of W_U", basis_similarity(matched_dft_U, U_wu.to(dtype=torch.complex64)))
 
-print("\nSimilarity: Hartley Transform, Vh of W_E", basis_similarity(matched_dht_Vh, Vh_we.mH))
-print("Similarity: Hartley Transform, U of W_E", basis_similarity(matched_dht_U, U_we))
+print("\nSimilarity: Hartley Transform, Vh of W_U", basis_similarity(matched_dht_Vh, Vh_wu.mH))
+print("Similarity: Hartley Transform, U of W_U", basis_similarity(matched_dht_U, U_wu))
 
-print("\nSimilarity: Canonical, Vh of W_E", basis_similarity(matched_canonical_Vh, Vh_we.mH))
-print("Similarity: Canonical, U of W_E", basis_similarity(matched_canonical_U, U_we))
+print("\nSimilarity: Canonical, Vh of W_U", basis_similarity(matched_canonical_Vh, Vh_wu.mH))
+print("Similarity: Canonical, U of W_U", basis_similarity(matched_canonical_U, U_wu))
 
 print("\nSimilarity: W_E, q", basis_similarity(U_we, Vh_q.mH))
 print("Similarity: W_E, k", basis_similarity(U_we, Vh_k.mH))
